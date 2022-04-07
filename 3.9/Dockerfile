@@ -1,4 +1,4 @@
-FROM python:3.9
+FROM python:3.9.12
 
     # python
 ENV PYTHONFAULTHANDLER=1 \
@@ -11,7 +11,7 @@ ENV PYTHONFAULTHANDLER=1 \
     PIP_DEFAULT_TIMEOUT=100 \
     # poetry
     # https://python-poetry.org/docs/configuration/#using-environment-variables
-    POETRY_VERSION=1.1.11 \
+    POETRY_VERSION=1.1.13 \
     # make poetry install to this location
     POETRY_HOME="/opt/poetry" \
     # make poetry create the virtual environment in the project's root
@@ -30,8 +30,9 @@ ENV PYTHONFAULTHANDLER=1 \
 ENV PATH="$POETRY_HOME/bin:$VENV_PATH/bin:$PATH"
 
 RUN apt-get update \
-  && apt-get install -y build-essential unzip wget build-essential python-dev xxd \
+  && apt-get install -y build-essential unzip wget xxd \
   && rm -rf /var/lib/apt/lists/*
-RUN curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/install-poetry.py | python
+
+RUN curl -sSL https://install.python-poetry.org | python3 -
 
 WORKDIR ${APP_PATH}
