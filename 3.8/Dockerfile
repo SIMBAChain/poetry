@@ -34,5 +34,5 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 RUN curl -sSL https://install.python-poetry.org | /usr/local/bin/python3.8 -
-RUN poetry env use /usr/local/bin/python3.8
+
 WORKDIR ${APP_PATH}
