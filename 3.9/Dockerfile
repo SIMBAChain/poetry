@@ -33,6 +33,6 @@ RUN apt-get update \
   && apt-get install -y build-essential unzip wget xxd \
   && rm -rf /var/lib/apt/lists/*
 
-RUN curl -sSL https://install.python-poetry.org | python3 -
+RUN curl -sSL https://install.python-poetry.org | /usr/local/bin/python3.9 - 
 
 WORKDIR ${APP_PATH}
