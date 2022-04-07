@@ -27,7 +27,7 @@ ENV PYTHONFAULTHANDLER=1 \
     APP_PATH="/app"
 
 # prepend poetry and venv to path
-ENV PATH="$POETRY_HOME/bin:$VENV_PATH/bin:$PATH"
+ENV PATH="/usr/local/bin/:$POETRY_HOME/bin:$VENV_PATH/bin:$PATH"
 
 RUN apt-get update \
   && apt-get install -y build-essential unzip wget xxd \
