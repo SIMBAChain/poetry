@@ -34,5 +34,6 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 RUN curl -sSL https://install.python-poetry.org | /usr/local/bin/python3.9 - 
+RUN python3 -m pip install python-semantic-release
 
 WORKDIR ${APP_PATH}
