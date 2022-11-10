@@ -30,7 +30,7 @@ ENV PYTHONFAULTHANDLER=1 \
 ENV PATH="/usr/local/bin/:$POETRY_HOME/bin:$VENV_PATH/bin:$PATH"
 
 RUN apt-get update \
-  && apt-get install -y build-essential unzip wget xxd \
+  && apt-get install -y build-essential unzip wget xxd vim-common\
   && rm -rf /var/lib/apt/lists/*
 
 RUN curl -sSL https://install.python-poetry.org | /usr/local/bin/python3.9 - 
