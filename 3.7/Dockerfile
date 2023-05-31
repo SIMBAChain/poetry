@@ -1,4 +1,4 @@
-FROM python:3.7.15
+FROM python:3.7.16
 
     # python
 ENV PYTHONFAULTHANDLER=1 \
@@ -11,7 +11,7 @@ ENV PYTHONFAULTHANDLER=1 \
     PIP_DEFAULT_TIMEOUT=100 \
     # poetry
     # https://python-poetry.org/docs/configuration/#using-environment-variables
-    POETRY_VERSION=1.2.2 \
+    POETRY_VERSION=1.5.1 \
     # make poetry install to this location
     POETRY_HOME="/opt/poetry" \
     # make poetry create the virtual environment in the project's root
