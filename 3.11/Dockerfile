@@ -33,7 +33,7 @@ RUN apt-get update \
   && apt-get install -y build-essential unzip wget xxd vim-common\
   && rm -rf /var/lib/apt/lists/*
 
-RUN curl -sSL https://install.python-poetry.org | /usr/local/bin/python3.10 - 
+RUN curl -sSL https://install.python-poetry.org | /usr/local/bin/python3.11 - 
 RUN python3 -m pip install python-semantic-release
 
 WORKDIR ${APP_PATH}
