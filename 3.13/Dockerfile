@@ -1,4 +1,4 @@
-FROM python:3.7.16
+FROM python:3.13.2
 
     # python
 ENV PYTHONFAULTHANDLER=1 \
@@ -11,7 +11,7 @@ ENV PYTHONFAULTHANDLER=1 \
     PIP_DEFAULT_TIMEOUT=100 \
     # poetry
     # https://python-poetry.org/docs/configuration/#using-environment-variables
-    POETRY_VERSION=1.5.1 \
+    POETRY_VERSION=2.1.1 \
     # make poetry install to this location
     POETRY_HOME="/opt/poetry" \
     # make poetry create the virtual environment in the project's root
@@ -30,10 +30,10 @@ ENV PYTHONFAULTHANDLER=1 \
 ENV PATH="/usr/local/bin/:$POETRY_HOME/bin:$VENV_PATH/bin:$PATH"
 
 RUN apt-get update \
-  && apt-get install -y build-essential unzip wget xxd vim-common \
+  && apt-get install -y build-essential unzip wget xxd vim-common\
   && rm -rf /var/lib/apt/lists/*
 
-RUN curl -sSL https://install.python-poetry.org | /usr/local/bin/python3.7 -
+RUN curl -sSL https://install.python-poetry.org | /usr/local/bin/python3.13 - 
 RUN python3 -m pip install python-semantic-release
 
 WORKDIR ${APP_PATH}
