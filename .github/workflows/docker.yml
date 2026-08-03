@@ -1,0 +1,175 @@
+name: Build and publish images
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '*/Dockerfile'
+      - '.github/workflows/docker.yml'
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    # Weekly rebuild so patched upstream Debian/Python layers land even
+    # without a Dockerfile change. Does NOT move the pinned Python patch
+    # or POETRY_VERSION - those are bumped by Dependabot or by hand.
+    - cron: '17 4 * * 1'
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  discover:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      variants: ${{ steps.scan.outputs.variants }}
+      version: ${{ steps.ver.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - id: scan
+        run: |
+          variants=$(find . -mindepth 2 -maxdepth 2 -name Dockerfile -printf '%h\n' \
+              | sed 's|^\./||' | sort | jq -Rrc --slurp 'split("\n") | map(select(length > 0))')
+          printf 'variants=%s\n' "$variants" >> "$GITHUB_OUTPUT"
+
+      - id: ver
+        env:
+          SHA: ${{ github.sha }}
+        run: printf 'version=%s-%s\n' "$(date -u +%Y%m%d)" "${SHA:0:7}" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: discover
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: ${{ fromJSON(needs.discover.outputs.variants) }}
+        platform:
+          - { arch: amd64, runner: ubuntu-24.04 }
+          - { arch: arm64, runner: ubuntu-24.04-arm }
+    runs-on: ${{ matrix.platform.runner }}
+    permissions:
+      contents: read
+      packages: write # push image digests to ghcr.io via GITHUB_TOKEN
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+        with:
+          cache-binary: false
+
+      # Fork PRs have no registry secrets: build only, never push.
+      - if: github.event_name == 'pull_request'
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: ${{ matrix.variant }}
+          platforms: linux/${{ matrix.platform.arch }}
+          pull: true
+          push: false
+          outputs: type=cacheonly
+
+      - if: github.event_name != 'pull_request'
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - if: github.event_name != 'pull_request'
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - if: github.event_name != 'pull_request'
+        id: build
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: ${{ matrix.variant }}
+          platforms: linux/${{ matrix.platform.arch }}
+          pull: true
+          push: true
+          provenance: false
+          sbom: false
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          outputs: type=image,"name=docker.io/simbachain/poetry-${{ matrix.variant }},ghcr.io/simbachain/poetry-${{ matrix.variant }}",push-by-digest=true,name-canonical=true,push=true
+
+      - if: github.event_name != 'pull_request'
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          mkdir -p /tmp/digests
+          touch "/tmp/digests/${DIGEST#sha256:}"
+
+      - if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: digests-${{ matrix.variant }}-${{ matrix.platform.arch }}
+          path: /tmp/digests/*
+          retention-days: 1
+          if-no-files-found: error
+
+  merge:
+    if: github.event_name != 'pull_request'
+    needs: [discover, build]
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: ${{ fromJSON(needs.discover.outputs.variants) }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write # push the merged multi-arch manifest to ghcr.io via GITHUB_TOKEN
+    steps:
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+        with:
+          cache-binary: false
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: digests-${{ matrix.variant }}-*
+          merge-multiple: true
+          path: /tmp/digests
+
+      - env:
+          VARIANT: ${{ matrix.variant }}
+          VERSION: ${{ needs.discover.outputs.version }}
+        working-directory: /tmp/digests
+        run: |
+          for registry in docker.io ghcr.io; do
+            image="$registry/simbachain/poetry-$VARIANT"
+            digests=()
+            for digest in *; do
+              digests+=("$image@sha256:$digest")
+            done
+            docker buildx imagetools create -t "$image:latest" -t "$image:$VERSION" "${digests[@]}"
+          done
+
+  ci-ok:
+    needs: [discover, build, merge]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
