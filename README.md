@@ -7,4 +7,5 @@ Available at:
 - https://hub.docker.com/r/simbachain/poetry-3.12
 - https://hub.docker.com/r/simbachain/poetry-3.13
 - https://hub.docker.com/r/simbachain/poetry-3.14
+- https://hub.docker.com/r/simbachain/poetry-3.15
 - https://hub.docker.com/r/simbachain/poetry-latest
