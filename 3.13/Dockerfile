@@ -21,7 +21,7 @@ ENV PYTHONFAULTHANDLER=1 \
     UV_LINK_MODE=copy \
     # poetry
     # https://python-poetry.org/docs/configuration/#using-environment-variables
-    POETRY_VERSION=2.4.1 \
+    POETRY_VERSION=2.5.1 \
     # make poetry install to this location
     POETRY_HOME="/opt/poetry" \
     # make poetry create the virtual environment in the project's root
