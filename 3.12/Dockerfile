@@ -1,4 +1,4 @@
-FROM python:3.12.13
+FROM python:3.12.15
 
 # pinned tool binaries (tracked by Dependabot via COPY --from)
 COPY --from=ghcr.io/astral-sh/uv:0.13.6 /uv /uvx /usr/local/bin/
